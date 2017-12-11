@@ -14,7 +14,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Questions to be answered
 ```{r}
 #------ Libraries ------
-library(metafor)
 library(pacman)
 
 p_load(metafor)
@@ -40,14 +39,23 @@ N.B. we focus on pitch mean and pitch standard deviation.
 
 - Build a forest plot of the results (forest(model))
 ```{r}
-#Calculate standardized effect size
-PitchRange = escalc('SMD', n1i=SampleSizeSchizo, n2i=SampleSizeContros, m1i=PitchMeanSchizo, m2i=PitchMeanControls, sd1i=PitchMeanSchizoSD, sd2i=PitchMeanControlsSD, data = data)
+#Calculate standardized effect size for mean and sd
+escalc_mean = escalc('SMD', n1i=SampleSizeSchizo, n2i=SampleSizeContros, m1i=PitchMeanSchizo, m2i=PitchMeanControls, sd1i=PitchMeanSchizoSD, sd2i=PitchMeanControlsSD, data = data)
 
-#Make model
-m = rma(yi,vi, data= PitchRange, slab = Article)
+escalc_sd = escalc('SMD', n1i=SampleSizeSchizo, n2i=SampleSizeContros, m1i=PitchSDSchizo, m2i=PitchSDControls, sd1i=PitchSDSchizoSD, sd2i=PitchSDControlsSD, data = data)
+
+#Make models
+m_mean = rma(yi,vi, data= escalc_mean, slab = Article)
+m_sd = rma(yi,vi, data= escalc_sd, slab = Article)
 
 #Make forest plot
-forest(m)
+forest(m_mean)
+forest(m_sd)
+
+#Make summary of models
+summary(m_mean)
+summary(m_sd)
+
 
 ```
 
@@ -73,10 +81,10 @@ sd_mean_control = sd(data_3$mean[data_3$Diagnosis == 0])
 sd_mean_schizo = sd(data_3$mean[data_3$Diagnosis == 1])
 
 #SD of pitch
-sd_control = sd(data_3$mean[data_3$Diagnosis == 0])
-sd_schizo = sd(data_3$mean[data_3$Diagnosis == 1])
+sd_control = mean(data_3$sd[data_3$Diagnosis == 0])
+sd_schizo = mean(data_3$sd[data_3$Diagnosis == 1])
 
-#SD of SD of pitch???
+#SD of SD of pitch
 sd_control_sd = sd(data_3$sd[data_3$Diagnosis == 0])
 sd_schizo_sd = sd(data_3$sd[data_3$Diagnosis == 1])
 
@@ -84,39 +92,58 @@ sd_schizo_sd = sd(data_3$sd[data_3$Diagnosis == 1])
 our_study = escalc('SMD', n1i=ss_schizo, n2i=ss_control, m1i=m_schizo, m2i=m_control, sd1i=sd_mean_schizo, sd2i=sd_mean_control, data = data_3)
 
 #make a row to merge with pitch range still need Pitchsd and pitchsdsd for both td and Shcizo (just before yi)
-one_row = c('ExpMeth & al', 2017, ss_schizo, ss_control, m_control, sd_mean_control, m_schizo, sd_mean_schizo, sd_control, sd_schizo, sd_control_sd, sd_schizo_sd, our_study$yi[1], our_study$vi[1])
+one_row = c('ExpMeth et al. 2017', 2017, ss_schizo, ss_control, m_control, sd_mean_control, m_schizo, sd_mean_schizo, sd_control, sd_schizo, sd_control_sd, sd_schizo_sd, our_study$yi[1], our_study$vi[1])
 
-one_row
+#Make numeric, then make back into factor further below
+#escalc_mean[,1] = as.character(escalc_mean[,1])
+#escalc_sd[,1] = as.character(escalc_sd[,1])
 
 #Add the row to PitchRange
-# PitchRange = rbind(PitchRange, one_row)
+escalc_mean2 = rbind(escalc_mean, one_row)
+escalc_sd2 = rbind(escalc_sd, one_row)
+
+#make back into factor
+#escalc_mean[,1] = as.factor(escalc_mean[,1])
+#escalc_sd[,1] = as.factor(escalc_sd[,1])
+
+#Make numeric
+escalc_mean2$yi = as.numeric(escalc_mean2$yi)
+escalc_mean2$vi = as.numeric(escalc_mean2$vi)
+escalc_sd2$yi = as.numeric(escalc_sd2$yi)
+escalc_sd2$vi = as.numeric(escalc_sd2$vi)
 
 #------ Do analysis again ------
-m = rma(yi,vi, data= PitchRange, slab = Article)
-forest(m)
-
+m2_mean = rma(yi,vi, data= escalc_mean2, slab = Article)
+m2_sd = rma(yi,vi, data= escalc_sd2, slab = Article)
+forest(m2_mean)
+summary(m2_mean)
+forest(m2_sd)
+summary(m2_sd)
 
 ```
 
 
 3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
 
+```{r}
+# assesing the quality of the litterature (tau and I2)
 
 
+inf = influence(m2_mean)
+print(inf)
+plot(inf)
+inf2 = influence(m2_sd)
+print(inf2)
+plot(inf2)
+
+# funnel plot
+funnel(m2_mean)
+regtest(m2_mean)
+ranktest(m2_mean)
+funnel(m2_sd)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
 ## Tips on the process to follow:
 
